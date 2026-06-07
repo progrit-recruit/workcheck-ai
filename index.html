@@ -1,0 +1,1405 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WorkCheck AI | 職場コンディション診断</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --primary: #6366f1;
+      --primary-dark: #4f46e5;
+      --primary-light: #c7d2fe;
+      --secondary: #ec4899;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+    }
+
+    body {
+      font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .app-header {
+      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #ec4899 100%);
+      padding: 14px 20px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 12px rgba(79, 70, 229, 0.3);
+    }
+
+    .app-header-inner {
+      max-width: 680px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .app-logo {
+      color: white;
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: 0.3px;
+    }
+
+    .app-logo-sub {
+      color: rgba(255,255,255,0.7);
+      font-size: 11px;
+      font-weight: 400;
+    }
+
+    .app-badge {
+      background: rgba(255,255,255,0.2);
+      color: white;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 99px;
+    }
+
+    .container {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 24px 16px 100px;
+    }
+
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    /* ── Welcome ── */
+    .welcome-hero {
+      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 60%, #ec4899 100%);
+      border-radius: 24px;
+      padding: 40px 28px 36px;
+      text-align: center;
+      color: white;
+      margin-bottom: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .welcome-hero::before {
+      content: '';
+      position: absolute;
+      width: 200px; height: 200px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 50%;
+      top: -60px; right: -40px;
+    }
+
+    .welcome-hero::after {
+      content: '';
+      position: absolute;
+      width: 150px; height: 150px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 50%;
+      bottom: -50px; left: -30px;
+    }
+
+    .welcome-emoji { font-size: 56px; margin-bottom: 16px; }
+
+    .welcome-title {
+      font-size: 24px;
+      font-weight: 800;
+      line-height: 1.35;
+      margin-bottom: 12px;
+    }
+
+    .welcome-subtitle {
+      font-size: 14px;
+      opacity: 0.85;
+      line-height: 1.7;
+    }
+
+    .welcome-card {
+      background: var(--card);
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+      margin-bottom: 16px;
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .feature-item {
+      background: linear-gradient(135deg, #f8faff 0%, #f1f0ff 100%);
+      border: 1px solid #e0e7ff;
+      border-radius: 14px;
+      padding: 16px 14px;
+    }
+
+    .feature-icon { font-size: 22px; margin-bottom: 6px; }
+
+    .feature-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 4px;
+    }
+
+    .feature-desc { font-size: 11px; color: var(--text-muted); line-height: 1.5; }
+
+    .info-card {
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 12px;
+      padding: 14px;
+      font-size: 12px;
+      color: #78350f;
+      line-height: 1.7;
+      margin-bottom: 20px;
+    }
+
+    /* ── Buttons ── */
+    .btn-start {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 17px;
+      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+      color: white;
+      font-size: 16px;
+      font-weight: 800;
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 16px rgba(79, 70, 229, 0.35);
+    }
+
+    .btn-start:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(79, 70, 229, 0.45);
+    }
+
+    /* ── Progress ── */
+    .progress-wrap {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 16px 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .progress-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .progress-section-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .progress-fraction {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--primary);
+      background: var(--primary-light);
+      padding: 2px 8px;
+      border-radius: 99px;
+    }
+
+    .progress-track {
+      height: 8px;
+      background: #e2e8f0;
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #4f46e5, #ec4899);
+      border-radius: 99px;
+      transition: width 0.5s ease;
+    }
+
+    /* ── Section header ── */
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: var(--card);
+      border-radius: 16px;
+      padding: 18px 20px;
+      margin-bottom: 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      border-left: 4px solid var(--primary);
+    }
+
+    .section-icon { font-size: 32px; }
+
+    .section-title { font-size: 16px; font-weight: 700; color: var(--text); }
+    .section-desc { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+
+    /* ── Question card ── */
+    .q-card {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      animation: fadeUp 0.35s ease both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .q-num {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--primary);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .q-text {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.55;
+      margin-bottom: 14px;
+    }
+
+    /* Likert */
+    .likert-list { display: flex; flex-direction: column; gap: 6px; }
+
+    .likert-opt {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 14px;
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.15s;
+      user-select: none;
+    }
+
+    .likert-opt:hover { border-color: var(--primary-light); background: #f5f3ff; }
+
+    .likert-opt.sel {
+      border-color: var(--primary);
+      background: #eef2ff;
+    }
+
+    .radio-dot {
+      width: 18px;
+      height: 18px;
+      border: 2px solid #cbd5e1;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+    }
+
+    .likert-opt.sel .radio-dot {
+      border-color: var(--primary);
+      background: var(--primary);
+    }
+
+    .likert-opt.sel .radio-dot::after {
+      content: '';
+      width: 6px;
+      height: 6px;
+      background: white;
+      border-radius: 50%;
+    }
+
+    .opt-label { font-size: 13px; color: var(--text); }
+
+    /* Choice A/B/C/D */
+    .choice-list { display: flex; flex-direction: column; gap: 7px; }
+
+    .choice-opt {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 13px 14px;
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.15s;
+      user-select: none;
+    }
+
+    .choice-opt:hover { border-color: #f9a8d4; background: #fdf2f8; }
+
+    .choice-opt.sel {
+      border-color: var(--secondary);
+      background: #fdf2f8;
+    }
+
+    .choice-badge {
+      width: 26px;
+      height: 26px;
+      border-radius: 7px;
+      background: #f1f5f9;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.15s;
+    }
+
+    .choice-opt.sel .choice-badge {
+      background: var(--secondary);
+      color: white;
+    }
+
+    .choice-label { font-size: 13px; color: var(--text); line-height: 1.5; padding-top: 4px; }
+
+    /* ── Nav footer ── */
+    .nav-footer {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: rgba(255,255,255,0.96);
+      backdrop-filter: blur(8px);
+      border-top: 1px solid var(--border);
+      padding: 12px 16px;
+      display: none;
+      gap: 10px;
+    }
+
+    .nav-footer.show { display: flex; }
+
+    .nav-back {
+      padding: 14px 20px;
+      background: #f1f5f9;
+      color: var(--text-muted);
+      font-size: 14px;
+      font-weight: 700;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .nav-back:hover { background: #e2e8f0; }
+
+    .nav-next {
+      flex: 1;
+      padding: 14px;
+      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+      color: white;
+      font-size: 15px;
+      font-weight: 800;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+    }
+
+    .nav-next:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(79, 70, 229, 0.4); }
+
+    .nav-next:disabled {
+      background: #e2e8f0;
+      color: #94a3b8;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    /* ── Loading ── */
+    .loading-wrap {
+      text-align: center;
+      padding: 60px 24px;
+    }
+
+    .loader-ring {
+      width: 72px;
+      height: 72px;
+      border: 5px solid #e2e8f0;
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+      margin: 0 auto 28px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-title { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+    .loading-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 32px; }
+
+    .loading-steps { list-style: none; text-align: left; max-width: 260px; margin: 0 auto; }
+
+    .loading-step {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 0;
+      font-size: 13px;
+      color: #94a3b8;
+      transition: color 0.3s;
+    }
+
+    .loading-step.done { color: var(--success); }
+
+    /* ── Results ── */
+    .result-hero {
+      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 60%, #ec4899 100%);
+      border-radius: 24px;
+      padding: 30px 24px;
+      color: white;
+      text-align: center;
+      margin-bottom: 18px;
+    }
+
+    .result-hero-emoji { font-size: 48px; margin-bottom: 12px; }
+    .result-hero-title { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
+    .result-hero-sub { font-size: 13px; opacity: 0.8; }
+
+    /* Score grid */
+    .scores-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .score-card {
+      background: var(--card);
+      border-radius: 18px;
+      padding: 18px 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    }
+
+    .score-card-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+      line-height: 1.4;
+    }
+
+    .score-val {
+      font-size: 38px;
+      font-weight: 900;
+      line-height: 1;
+      margin-bottom: 10px;
+    }
+
+    .score-pct { font-size: 18px; font-weight: 700; }
+
+    .score-track {
+      height: 7px;
+      background: #e2e8f0;
+      border-radius: 99px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+
+    .score-bar {
+      height: 100%;
+      border-radius: 99px;
+      transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .score-status {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 99px;
+      display: inline-block;
+      margin-bottom: 8px;
+    }
+
+    .score-desc-text { font-size: 11px; color: var(--text-muted); line-height: 1.55; }
+
+    /* Colors */
+    .c-low  { color: #10b981; }
+    .c-mid  { color: #f59e0b; }
+    .c-high { color: #ef4444; }
+    .b-low  { background: #10b981; }
+    .b-mid  { background: #f59e0b; }
+    .b-high { background: #ef4444; }
+    .bg-low  { background: #d1fae5; color: #065f46; }
+    .bg-mid  { background: #fef3c7; color: #78350f; }
+    .bg-high { background: #fee2e2; color: #7f1d1d; }
+
+    /* Chart */
+    .chart-card {
+      background: var(--card);
+      border-radius: 20px;
+      padding: 22px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      margin-bottom: 18px;
+      text-align: center;
+    }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    /* Personality */
+    .personality-card {
+      background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%);
+      border: 2px solid #f9a8d4;
+      border-radius: 20px;
+      padding: 22px;
+      margin-bottom: 18px;
+    }
+
+    .pers-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .pers-emoji { font-size: 48px; }
+
+    .pers-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .pers-name { font-size: 20px; font-weight: 800; color: var(--text); line-height: 1.2; }
+
+    .pers-tagline {
+      font-size: 13px;
+      color: var(--text-muted);
+      font-style: italic;
+      margin-bottom: 16px;
+      line-height: 1.6;
+    }
+
+    .pers-rows { display: flex; flex-direction: column; gap: 10px; }
+
+    .pers-row {
+      background: white;
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+
+    .pers-row-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--secondary);
+      margin-bottom: 5px;
+    }
+
+    .pers-row-content { font-size: 13px; color: var(--text); line-height: 1.6; }
+
+    /* Advice */
+    .advice-card {
+      background: var(--card);
+      border-radius: 20px;
+      padding: 22px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      margin-bottom: 18px;
+    }
+
+    .advice-text { font-size: 14px; color: var(--text); line-height: 1.9; }
+
+    /* Share */
+    .share-card {
+      background: var(--card);
+      border-radius: 20px;
+      padding: 22px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      margin-bottom: 18px;
+    }
+
+    .share-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.6; }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      padding: 4px 0;
+      margin-bottom: 16px;
+    }
+
+    .toggle-switch {
+      width: 46px;
+      height: 26px;
+      background: #cbd5e1;
+      border-radius: 99px;
+      position: relative;
+      transition: background 0.3s;
+    }
+
+    .toggle-switch.on { background: var(--primary); }
+
+    .toggle-switch::after {
+      content: '';
+      width: 20px;
+      height: 20px;
+      background: white;
+      border-radius: 50%;
+      position: absolute;
+      top: 3px; left: 3px;
+      transition: left 0.3s;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    }
+
+    .toggle-switch.on::after { left: 23px; }
+
+    .toggle-label { font-size: 14px; font-weight: 700; color: var(--text); }
+
+    .company-box {
+      display: none;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+    }
+
+    .company-box.show { display: block; }
+
+    .company-box-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 10px;
+    }
+
+    .company-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      font-size: 13px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .company-row:last-child { border-bottom: none; }
+    .company-row strong { font-weight: 800; color: var(--text); }
+
+    .company-note {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 10px;
+      font-style: italic;
+      line-height: 1.6;
+    }
+
+    /* Disclaimer */
+    .disclaimer {
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 14px;
+      padding: 16px;
+      font-size: 11px;
+      color: #78350f;
+      line-height: 1.7;
+      text-align: center;
+      margin-bottom: 18px;
+    }
+
+    /* Restart */
+    .restart-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 14px;
+      background: #f1f5f9;
+      color: var(--text-muted);
+      font-size: 14px;
+      font-weight: 700;
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .restart-btn:hover { background: #e2e8f0; color: var(--text); }
+
+    @media (max-width: 480px) {
+      .scores-grid { grid-template-columns: 1fr; }
+      .feature-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="app-header-inner">
+    <div>
+      <div class="app-logo">WorkCheck AI</div>
+      <div class="app-logo-sub">職場コンディション診断</div>
+    </div>
+    <div class="app-badge">β版</div>
+  </div>
+</header>
+
+<main class="container">
+
+  <!-- ===== Welcome ===== -->
+  <div class="screen active" id="screen-welcome">
+    <div class="welcome-hero">
+      <div class="welcome-emoji">🧠</div>
+      <div class="welcome-title">あなたの職場環境を<br>AIが多角的に分析します</div>
+      <div class="welcome-subtitle">24の質問に回答するだけで、コンディション・役割適合性・組織との相性・キャリアの方向性を総合的に診断します。所要時間：約5分</div>
+    </div>
+
+    <div class="welcome-card">
+      <div class="feature-grid">
+        <div class="feature-item">
+          <div class="feature-icon">💪</div>
+          <div class="feature-label">コンディション状態</div>
+          <div class="feature-desc">現在の心身の疲労・ストレス度を測定</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🎯</div>
+          <div class="feature-label">役割ミスマッチ度</div>
+          <div class="feature-desc">業務・役職と強みの合致度を分析</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🏢</div>
+          <div class="feature-label">組織ミスマッチ度</div>
+          <div class="feature-desc">社風・文化・人間関係との相性を診断</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🚀</div>
+          <div class="feature-label">転職必要度</div>
+          <div class="feature-desc">環境変化の必要性・緊急度を算出</div>
+        </div>
+      </div>
+
+      <div class="info-card">
+        ⚠️ この診断結果はあくまで参考情報であり、専門的な医療・心理・法律・キャリアアドバイスではありません。深刻な状況の場合は、専門家や相談機関にご連絡ください。
+      </div>
+
+      <button class="btn-start" onclick="startDiagnosis()">
+        診断を始める →
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== Questions ===== -->
+  <div class="screen" id="screen-questions">
+    <div class="progress-wrap">
+      <div class="progress-meta">
+        <div class="progress-section-name" id="prog-name">パート 1 / 5</div>
+        <div class="progress-fraction" id="prog-frac">0 / 24問</div>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="prog-fill" style="width:0%"></div>
+      </div>
+    </div>
+    <div id="section-hd"></div>
+    <div id="q-container"></div>
+  </div>
+
+  <!-- ===== Loading ===== -->
+  <div class="screen" id="screen-loading">
+    <div class="loading-wrap">
+      <div class="loader-ring"></div>
+      <div class="loading-title">AIが分析中...</div>
+      <div class="loading-sub">あなたの回答を詳しく解析しています</div>
+      <ul class="loading-steps">
+        <li class="loading-step" id="ls1">⏳ コンディション状態を分析中</li>
+        <li class="loading-step" id="ls2">⏳ 役割適合度を計算中</li>
+        <li class="loading-step" id="ls3">⏳ 組織ミスマッチを診断中</li>
+        <li class="loading-step" id="ls4">⏳ 転職必要度を算出中</li>
+        <li class="loading-step" id="ls5">⏳ パーソナリティタイプを判定中</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===== Results ===== -->
+  <div class="screen" id="screen-results"></div>
+
+</main>
+
+<div class="nav-footer" id="nav-footer">
+  <button class="nav-back" id="btn-back" onclick="goBack()">← 戻る</button>
+  <button class="nav-next" id="btn-next" onclick="goNext()" disabled>次へ →</button>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+// QUESTIONS DATA
+// ─────────────────────────────────────────────
+const SECTIONS = [
+  { id:'condition',    title:'コンディション診断',     desc:'現在の心身の状態について教えてください',         icon:'💪' },
+  { id:'role',         title:'役割ミスマッチ診断',     desc:'業務・役職と自分の強みの合致度について',         icon:'🎯' },
+  { id:'org',          title:'組織ミスマッチ診断',     desc:'会社の文化・人間関係との相性について',           icon:'🏢' },
+  { id:'career',       title:'キャリア・転職診断',     desc:'今後のキャリアについてのお気持ちを教えてください', icon:'🚀' },
+  { id:'personality',  title:'パーソナリティ診断',     desc:'あなたの働き方や価値観を教えてください',         icon:'🎭' },
+];
+
+const L5 = ['まったくそう思わない','あまりそう思わない','どちらとも言えない','ややそう思う','とてもそう思う'];
+
+const QUESTIONS = [
+  // --- condition (c1-c5) ---
+  { id:'c1', sec:'condition', text:'仕事のことを考えると気が重くなることが多い',                   type:'likert', opts:L5 },
+  { id:'c2', sec:'condition', text:'睡眠が十分にとれておらず、疲れが抜けない感覚がある',           type:'likert', opts:L5 },
+  { id:'c3', sec:'condition', text:'仕事中、強いプレッシャーやストレスを感じることが多い',         type:'likert', opts:L5 },
+  { id:'c4', sec:'condition', text:'頭痛・胃痛・食欲不振など、体の不調が気になる',               type:'likert', opts:L5 },
+  { id:'c5', sec:'condition', text:'仕事以外の趣味や活動を十分に楽しめていない',                 type:'likert', opts:L5 },
+
+  // --- role (r1-r5) ---
+  { id:'r1', sec:'role', text:'今の業務は自分の得意なことや強みを活かせていない',                type:'likert', opts:L5 },
+  { id:'r2', sec:'role', text:'今の仕事でスキルアップや成長をあまり感じられていない',            type:'likert', opts:L5 },
+  { id:'r3', sec:'role', text:'今担当している業務内容にやりがいを感じない',                     type:'likert', opts:L5 },
+  { id:'r4', sec:'role', text:'今の職位・役割は自分に合っていないと感じる',                     type:'likert', opts:L5 },
+  { id:'r5', sec:'role', text:'自分のスキルや努力が十分に評価されていないと感じる',               type:'likert', opts:L5 },
+
+  // --- org (o1-o5) ---
+  { id:'o1', sec:'org', text:'会社の価値観や方針に共感できないことが多い',                       type:'likert', opts:L5 },
+  { id:'o2', sec:'org', text:'職場の人間関係でストレスや摩擦を感じる',                          type:'likert', opts:L5 },
+  { id:'o3', sec:'org', text:'上司との信頼関係が薄い、または難しいと感じる',                    type:'likert', opts:L5 },
+  { id:'o4', sec:'org', text:'自分の意見が職場でなかなか尊重されないと感じる',                   type:'likert', opts:L5 },
+  { id:'o5', sec:'org', text:'残業・休日・リモートなど働き方の条件に大きな不満がある',            type:'likert', opts:L5 },
+
+  // --- career (ca1-ca4) ---
+  { id:'ca1', sec:'career', text:'3年後も今の会社で働いているイメージが持てない',                 type:'likert', opts:L5 },
+  { id:'ca2', sec:'career', text:'転職・独立・副業などを真剣に考えることが増えた',               type:'likert', opts:L5 },
+  { id:'ca3', sec:'career', text:'今の職場を友人や知人に勧めたいとは思えない',                   type:'likert', opts:L5 },
+  { id:'ca4', sec:'career', text:'今の職場では実現できないことを達成したいという気持ちが強い',     type:'likert', opts:L5 },
+
+  // --- personality (p1-p5) ---
+  { id:'p1', sec:'personality', text:'仕事で一番モチベーションが上がるのはどんな時ですか？', type:'choice',
+    opts:['誰かの役に立てた・感謝された時','新しいアイデアや企画が形になった時','正確なデータや分析で問題を解決できた時','チームを引っ張って大きな成果が出た時'],
+    codes:['A','B','C','D'] },
+  { id:'p2', sec:'personality', text:'職場でどんな役割が一番しっくりきますか？', type:'choice',
+    opts:['サポート役・縁の下の力持ち','アイデア出し・企画立案・発信','調査・分析・専門知識の発揮','リーダー・意思決定・全体調整'],
+    codes:['A','B','C','D'] },
+  { id:'p3', sec:'personality', text:'ストレスを感じた時の対処法は？', type:'choice',
+    opts:['信頼できる人に相談する','気分転換に全く別のことをする','一人で状況を整理・分析する','とにかく行動して状況を変える'],
+    codes:['A','B','C','D'] },
+  { id:'p4', sec:'personality', text:'理想的な働き方は？', type:'choice',
+    opts:['チームで協力し合いながら進める','自由度が高く裁量を持って進める','明確なルールや仕組みの中で確実に進める','変化やチャレンジが多い環境で進める'],
+    codes:['A','B','C','D'] },
+  { id:'p5', sec:'personality', text:'自分の一番の強みは？', type:'choice',
+    opts:['協調性・コミュニケーション力・共感力','創造力・発想力・変化への適応力','分析力・論理的思考・専門的知識','実行力・決断力・リーダーシップ'],
+    codes:['A','B','C','D'] },
+];
+
+const SEC_QS = {};
+SECTIONS.forEach(s => { SEC_QS[s.id] = QUESTIONS.filter(q => q.sec === s.id); });
+
+// ─────────────────────────────────────────────
+// PERSONALITY TYPES
+// ─────────────────────────────────────────────
+const PTYPES = {
+  A: {
+    name:'チームハーモナイザー型', emoji:'🤝',
+    tag:'人と人をつなぎ、チームを温かく支えるタイプ',
+    str:'高い共感力と傾聴力でチームの潤滑剤になれる。困っている人を放っておけない誠実さが強み。',
+    cau:'他者への配慮が強すぎて自己犠牲になりがち。NOが言いにくく、抱え込みやすい傾向がある。',
+    env:'人間関係を大切にする温かい職場。HR・カスタマーサクセス・教育・医療・サービス業など。',
+  },
+  B: {
+    name:'ビジョンクリエイター型', emoji:'💡',
+    tag:'アイデアと創造力で新しい価値を生み出すタイプ',
+    str:'独創的な発想と柔軟な思考で、前例のない課題に新鮮なアプローチができる。',
+    cau:'実行フェーズや地道な作業で集中力が続きにくい。アイデアが多すぎて散漫になることも。',
+    env:'スタートアップ・クリエイティブ職・マーケティング・企画・デザイン・メディア業界など。',
+  },
+  C: {
+    name:'ディープスペシャリスト型', emoji:'🔬',
+    tag:'深く掘り下げ、正確さと専門性で信頼を築くタイプ',
+    str:'論理的思考と高い専門性で複雑な問題を丁寧に解決。品質へのこだわりが強み。',
+    cau:'変化への適応に時間がかかることがある。広い視点より深い視点を好むため全体感が弱くなることも。',
+    env:'R&D・データサイエンス・エンジニアリング・法務・財務・研究機関など。',
+  },
+  D: {
+    name:'アクションリーダー型', emoji:'⚡',
+    tag:'素早い判断と行動力で、チームを前進させるタイプ',
+    str:'決断力と実行力で組織を牽引。困難な状況でも立ち止まらず動き続けられる。',
+    cau:'独走しがちで細部を見落とすことがある。スピード優先で人の感情に目が届かなくなることも。',
+    env:'営業・プロジェクトマネジメント・経営・コンサルティング・スタートアップなど。',
+  },
+  AB: {
+    name:'ソーシャルクリエイター型', emoji:'🌟',
+    tag:'人とのつながりからアイデアを生み出す発信型タイプ',
+    str:'共感力と創造力を兼ね備え、人を巻き込みながらアイデアを形にできる。',
+    cau:'熱しやすく冷めやすい傾向。多くのことに手を出しすぎて完遂できないことがある。',
+    env:'PR・コミュニティマネジメント・教育系スタートアップ・ブランドマーケティングなど。',
+  },
+  AC: {
+    name:'縁の下の専門家型', emoji:'🛠️',
+    tag:'見えない場所で高い専門性を発揮し、組織を支えるタイプ',
+    str:'縁の下でコツコツと実力を積み上げ、チームの基盤を作る。信頼度が高い。',
+    cau:'自己アピールが苦手で評価されにくいことがある。変化の激しい環境では消耗しやすい。',
+    env:'バックオフィス・品質管理・技術サポート・会計・法務など縁の下職種。',
+  },
+  AD: {
+    name:'カリスマサポーター型', emoji:'🏆',
+    tag:'人を支えながらもチームを力強く引っ張る頼れるタイプ',
+    str:'人への配慮とリーダーシップを両立。メンバーの信頼を勝ち取り、チームを前進させる。',
+    cau:'責任を一人で抱え込む傾向。周囲への期待値が高くなりすぎることがある。',
+    env:'マネージャー・チームリーダー・人材育成・コーチング・教育管理職など。',
+  },
+  BC: {
+    name:'論理クリエイター型', emoji:'🧩',
+    tag:'データと直感を融合させ、革新的な解決策を生み出すタイプ',
+    str:'創造力と論理的思考の両方を持ち、アイデアに根拠と実現性を加えられる。',
+    cau:'完璧主義になりやすく、アウトプットのスピードが遅くなることがある。',
+    env:'プロダクトマネジメント・UXリサーチ・データ分析・コンサルティングなど。',
+  },
+  BD: {
+    name:'ビジョナリーリーダー型', emoji:'🚀',
+    tag:'大きな夢を描き、行動力で現実に変えていくタイプ',
+    str:'将来を見据えた発想と実行力を兼ね備え、組織を新しい方向へ導ける。',
+    cau:'大局を見るあまり足元の実務が疎かになることがある。周囲のペースに合わせるのが苦手。',
+    env:'起業・経営・新規事業開発・スタートアップCEO・イノベーション推進部門など。',
+  },
+  CD: {
+    name:'実行力アナリスト型', emoji:'⚙️',
+    tag:'緻密な分析と素早い実行で確実に成果を出すタイプ',
+    str:'データに基づいて素早く判断・実行できる。合理的で効率的な問題解決が得意。',
+    cau:'感情面への配慮が後回しになりがち。人間関係の構築に意識的な努力が必要。',
+    env:'エンジニアリングマネジメント・データドリブン経営・オペレーション改善など。',
+  },
+};
+
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+let curSec = 0;
+let answers = {};
+let scores  = {};
+let ptype   = null;
+
+// ─────────────────────────────────────────────
+// NAVIGATION
+// ─────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function startDiagnosis() {
+  showScreen('screen-questions');
+  document.getElementById('nav-footer').classList.add('show');
+  renderSection(0);
+}
+
+function renderSection(idx) {
+  curSec = idx;
+  const sec = SECTIONS[idx];
+  const qs  = SEC_QS[sec.id];
+  const totalAns = Object.keys(answers).length;
+
+  // progress
+  const pct = Math.round((totalAns / QUESTIONS.length) * 100);
+  document.getElementById('prog-fill').style.width = pct + '%';
+  document.getElementById('prog-name').textContent = `パート ${idx + 1} / ${SECTIONS.length}：${sec.title}`;
+  document.getElementById('prog-frac').textContent = `${totalAns} / ${QUESTIONS.length}問`;
+
+  // section header
+  document.getElementById('section-hd').innerHTML = `
+    <div class="section-header">
+      <div class="section-icon">${sec.icon}</div>
+      <div>
+        <div class="section-title">${sec.title}</div>
+        <div class="section-desc">${sec.desc}</div>
+      </div>
+    </div>`;
+
+  // questions
+  let html = '';
+  qs.forEach((q, i) => {
+    const gIdx = QUESTIONS.findIndex(x => x.id === q.id);
+    html += `<div class="q-card" style="animation-delay:${i * 0.05}s">
+      <div class="q-num">Q${gIdx + 1}</div>
+      <div class="q-text">${q.text}</div>
+      ${q.type === 'likert' ? renderLikert(q) : renderChoice(q)}
+    </div>`;
+  });
+  document.getElementById('q-container').innerHTML = html;
+
+  document.getElementById('btn-back').style.display = idx === 0 ? 'none' : '';
+  document.getElementById('btn-next').textContent = idx === SECTIONS.length - 1 ? '診断する ✨' : '次へ →';
+  checkNextBtn();
+  window.scrollTo(0, 0);
+}
+
+function renderLikert(q) {
+  let h = '<div class="likert-list">';
+  q.opts.forEach((label, i) => {
+    const val = i + 1;
+    const sel = answers[q.id] === val ? 'sel' : '';
+    h += `<div class="likert-opt ${sel}" onclick="pickLikert('${q.id}',${val},this)">
+      <div class="radio-dot"></div>
+      <div class="opt-label">${label}</div>
+    </div>`;
+  });
+  return h + '</div>';
+}
+
+function renderChoice(q) {
+  let h = '<div class="choice-list">';
+  q.opts.forEach((label, i) => {
+    const code = q.codes[i];
+    const sel  = answers[q.id] === code ? 'sel' : '';
+    h += `<div class="choice-opt ${sel}" onclick="pickChoice('${q.id}','${code}',this)">
+      <div class="choice-badge">${code}</div>
+      <div class="choice-label">${label}</div>
+    </div>`;
+  });
+  return h + '</div>';
+}
+
+function pickLikert(qid, val, el) {
+  answers[qid] = val;
+  el.closest('.q-card').querySelectorAll('.likert-opt').forEach(e => e.classList.remove('sel'));
+  el.classList.add('sel');
+  checkNextBtn(); updateProgFrac();
+}
+
+function pickChoice(qid, code, el) {
+  answers[qid] = code;
+  el.closest('.q-card').querySelectorAll('.choice-opt').forEach(e => e.classList.remove('sel'));
+  el.classList.add('sel');
+  checkNextBtn(); updateProgFrac();
+}
+
+function updateProgFrac() {
+  const n = Object.keys(answers).length;
+  const pct = Math.round((n / QUESTIONS.length) * 100);
+  document.getElementById('prog-fill').style.width = pct + '%';
+  document.getElementById('prog-frac').textContent = `${n} / ${QUESTIONS.length}問`;
+}
+
+function checkNextBtn() {
+  const qs = SEC_QS[SECTIONS[curSec].id];
+  const ok = qs.every(q => answers[q.id] !== undefined);
+  document.getElementById('btn-next').disabled = !ok;
+}
+
+function goNext() {
+  if (curSec < SECTIONS.length - 1) { renderSection(curSec + 1); }
+  else { startLoading(); }
+}
+
+function goBack() {
+  if (curSec > 0) { renderSection(curSec - 1); }
+  else {
+    showScreen('screen-welcome');
+    document.getElementById('nav-footer').classList.remove('show');
+  }
+}
+
+// ─────────────────────────────────────────────
+// LOADING
+// ─────────────────────────────────────────────
+function startLoading() {
+  showScreen('screen-loading');
+  document.getElementById('nav-footer').classList.remove('show');
+  window.scrollTo(0, 0);
+
+  const steps = ['ls1','ls2','ls3','ls4','ls5'];
+  const labels = ['✅ コンディション状態を分析完了','✅ 役割適合度を計算完了','✅ 組織ミスマッチを診断完了','✅ 転職必要度を算出完了','✅ パーソナリティタイプを判定完了'];
+  let i = 0;
+  const iv = setInterval(() => {
+    if (i < steps.length) {
+      const el = document.getElementById(steps[i]);
+      el.textContent = labels[i];
+      el.classList.add('done');
+      i++;
+    } else {
+      clearInterval(iv);
+      calcScores();
+      showResults();
+    }
+  }, 550);
+}
+
+// ─────────────────────────────────────────────
+// CALCULATION
+// ─────────────────────────────────────────────
+function avg(keys) {
+  return keys.reduce((s, k) => s + (answers[k] || 3), 0) / keys.length;
+}
+
+function toPercent(a) { return Math.min(100, Math.max(0, Math.round(((a - 1) / 4) * 100))); }
+
+function calcScores() {
+  const cond   = toPercent(avg(['c1','c2','c3','c4','c5']));
+  const role   = toPercent(avg(['r1','r2','r3','r4','r5']));
+  const org    = toPercent(avg(['o1','o2','o3','o4','o5']));
+  const base   = toPercent(avg(['ca1','ca2','ca3','ca4']));
+  const boost  = Math.round((role * 0.15 + org * 0.15 + cond * 0.1) * 0.3);
+  const career = Math.min(100, base + boost);
+
+  scores = { cond, role, org, career };
+
+  // personality
+  const cnt = { A:0, B:0, C:0, D:0 };
+  ['p1','p2','p3','p4','p5'].forEach(k => { if (answers[k]) cnt[answers[k]]++; });
+  const sorted = Object.entries(cnt).sort((a,b) => b[1] - a[1]);
+  const top = sorted[0][0], sec2 = sorted[1][0];
+  if (sorted[0][1] >= 3) {
+    ptype = PTYPES[top];
+  } else {
+    const combo = [top, sec2].sort().join('');
+    ptype = PTYPES[combo] || PTYPES[top];
+  }
+}
+
+// ─────────────────────────────────────────────
+// COLOR HELPERS
+// ─────────────────────────────────────────────
+function colorClass(s) { return s < 35 ? 'low' : s < 65 ? 'mid' : 'high'; }
+
+function statusLabel(s, type) {
+  if (type === 'cond') {
+    if (s < 25) return '良好';
+    if (s < 50) return 'やや疲労';
+    if (s < 75) return '要注意';
+    return '要改善';
+  }
+  if (s < 25) return 'ほぼなし';
+  if (s < 50) return 'やや高め';
+  if (s < 75) return '高め';
+  return '非常に高い';
+}
+
+function scoreDesc(s, type) {
+  if (type === 'cond') {
+    if (s < 25) return 'ストレスレベルは低く、心身ともに安定した状態です。';
+    if (s < 50) return '軽度の疲労やストレスが見られます。休息を意識しましょう。';
+    if (s < 75) return 'かなりの疲労・ストレスが蓄積しています。セルフケアが重要です。';
+    return '深刻な疲弊状態の可能性があります。専門家への相談も視野に入れてください。';
+  }
+  if (type === 'role') {
+    if (s < 25) return '役割・業務はあなたの強みや志向とよくマッチしています。';
+    if (s < 50) return '一部の面で役割と強みにズレを感じています。';
+    if (s < 75) return '役割・業務と強みにかなりのミスマッチが見られます。';
+    return '現在の役職・業務はあなたの強みとほとんど合っていない状態です。';
+  }
+  if (type === 'org') {
+    if (s < 25) return '会社の文化・人間関係との相性は良好です。';
+    if (s < 50) return '組織との間にやや違和感を感じる部分があります。';
+    if (s < 75) return '組織の価値観・環境との不一致が大きいようです。';
+    return '現在の組織はあなたにとって非常に合いにくい環境かもしれません。';
+  }
+  if (type === 'career') {
+    if (s < 25) return '現環境で満足度高く働けており、転職の必要性は低い状態です。';
+    if (s < 50) return '現状への不満はあるものの、今すぐ大きな決断をする必要は高くありません。';
+    if (s < 75) return '転職・環境変化を真剣に検討する時期かもしれません。';
+    return '早期の環境変化が強く示唆されます。キャリア相談の活用もお勧めします。';
+  }
+  return '';
+}
+
+function buildAdvice() {
+  const { cond, role, org, career } = scores;
+  let parts = [];
+
+  if (cond >= 70) {
+    parts.push('まず最優先で取り組むべきは、あなた自身の回復です。高いストレス・疲労状態が続いている可能性があります。睡眠・休息・信頼できる人への相談など、セルフケアを最優先にしてください。');
+  } else if (cond >= 45) {
+    parts.push('軽度の疲労やストレスが蓄積しています。日々の小さなリフレッシュを意識し、自分の限界サインを見逃さないようにしましょう。');
+  } else {
+    parts.push('コンディションは比較的安定しています。現在の自己管理の取り組みを続けましょう。');
+  }
+
+  if (role >= 65 && org >= 65) {
+    parts.push('役割と組織の両面でミスマッチが高い状態は、消耗が早くなりがちです。どちらが根本的な課題かを整理することが、次のアクションの出発点になります。');
+  } else if (role >= 65) {
+    parts.push('今の業務や役職とのミスマッチが気になります。社内での役割変更・異動の相談や、スキルの棚卸しから始めてみると良いかもしれません。');
+  } else if (org >= 65) {
+    parts.push('組織文化・人間関係との不一致が大きいようです。信頼できる上司や同僚との対話、または人事への相談も選択肢の一つです。');
+  }
+
+  if (career >= 65) {
+    parts.push('転職・キャリア変化への意欲が高まっている時期です。焦らず、自分が何を求めているかを言語化するところから始めてみましょう。転職エージェントや副業など、リスクの低い手段から探ってみるのも有効です。');
+  } else if (career >= 40) {
+    parts.push('将来への漠然とした不安はあるものの、今すぐ大きな決断をする必要はないかもしれません。自分のキャリアビジョンをゆっくりと整理してみてください。');
+  } else {
+    parts.push('現環境でのエンゲージメントは比較的高い状態です。今の強みをさらに伸ばすことに注力できると良いでしょう。');
+  }
+
+  return parts.join('<br><br>');
+}
+
+// ─────────────────────────────────────────────
+// RESULTS RENDER
+// ─────────────────────────────────────────────
+function showResults() {
+  window.scrollTo(0, 0);
+  const { cond, role, org, career } = scores;
+
+  const cards = [
+    { label:'コンディション<br>状態', s:cond,   t:'cond'   },
+    { label:'役割<br>ミスマッチ度', s:role,   t:'role'   },
+    { label:'組織<br>ミスマッチ度', s:org,    t:'org'    },
+    { label:'転職<br>必要度',       s:career, t:'career' },
+  ];
+
+  const scoresHTML = cards.map(c => {
+    const cl  = colorClass(c.s);
+    const sl  = statusLabel(c.s, c.t);
+    const sd  = scoreDesc(c.s, c.t);
+    return `<div class="score-card">
+      <div class="score-card-label">${c.label}</div>
+      <div class="score-val c-${cl}">${c.s}<span class="score-pct">%</span></div>
+      <div class="score-track"><div class="score-bar b-${cl}" style="width:0" data-w="${c.s}"></div></div>
+      <div class="score-status bg-${cl}">${sl}</div>
+      <div class="score-desc-text">${sd}</div>
+    </div>`;
+  }).join('');
+
+  const html = `
+    <div class="result-hero">
+      <div class="result-hero-emoji">🎉</div>
+      <div class="result-hero-title">診断完了！</div>
+      <div class="result-hero-sub">あなたの職場コンディション診断結果</div>
+    </div>
+
+    <div class="scores-grid">${scoresHTML}</div>
+
+    <div class="chart-card">
+      <div class="card-title">📊 4軸レーダーチャート</div>
+      <canvas id="radar-canvas" height="280" style="max-width:280px;margin:0 auto;display:block;"></canvas>
+    </div>
+
+    <div class="personality-card">
+      <div class="pers-header">
+        <div class="pers-emoji">${ptype.emoji}</div>
+        <div>
+          <div class="pers-label">🎭 あなたの職場パーソナリティタイプ</div>
+          <div class="pers-name">「${ptype.name}」</div>
+        </div>
+      </div>
+      <div class="pers-tagline">${ptype.tag}</div>
+      <div class="pers-rows">
+        <div class="pers-row">
+          <div class="pers-row-label">💪 強み</div>
+          <div class="pers-row-content">${ptype.str}</div>
+        </div>
+        <div class="pers-row">
+          <div class="pers-row-label">⚠️ 注意点</div>
+          <div class="pers-row-content">${ptype.cau}</div>
+        </div>
+        <div class="pers-row">
+          <div class="pers-row-label">🏢 向いている環境</div>
+          <div class="pers-row-content">${ptype.env}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="advice-card">
+      <div class="card-title">💬 総合アドバイス</div>
+      <div class="advice-text">${buildAdvice()}</div>
+    </div>
+
+    <div class="share-card">
+      <div class="card-title">🏢 会社・上司への共有</div>
+      <div class="share-desc">会社・上司と結果を共有する場合、<strong>転職必要度・組織ミスマッチ度・パーソナリティタイプは非公開</strong>となります。コンディション状態と役割ミスマッチ度のみ表示されます。</div>
+      <div class="toggle-row" onclick="toggleShare()">
+        <div class="toggle-switch" id="toggle-sw"></div>
+        <span class="toggle-label">会社・上司に共有する</span>
+      </div>
+      <div class="company-box" id="company-box">
+        <div class="company-box-title">📋 会社共有用サマリー</div>
+        <div class="company-row"><span>コンディション状態</span><strong>${cond}%</strong></div>
+        <div class="company-row"><span>役割ミスマッチ度</span><strong>${role}%</strong></div>
+        <div class="company-note">※ 転職必要度・組織ミスマッチ度・パーソナリティタイプの詳細は本人のみ確認可能です。</div>
+      </div>
+    </div>
+
+    <div class="disclaimer">
+      ⚠️ この診断結果はあくまで参考情報であり、専門的な医療・心理・法律・キャリアアドバイスではありません。深刻な状況の場合は、専門家や相談機関（産業医・カウンセラー・キャリアコンサルタントなど）にご連絡ください。
+    </div>
+
+    <button class="restart-btn" onclick="restart()">🔄 もう一度診断する</button>
+  `;
+
+  document.getElementById('screen-results').innerHTML = html;
+  showScreen('screen-results');
+
+  // animate bars
+  setTimeout(() => {
+    document.querySelectorAll('.score-bar[data-w]').forEach(el => {
+      el.style.width = el.dataset.w + '%';
+    });
+  }, 150);
+
+  // draw chart
+  setTimeout(() => drawRadar(), 400);
+}
+
+function drawRadar() {
+  const ctx = document.getElementById('radar-canvas');
+  if (!ctx) return;
+  new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: ['コンディション\n状態', '役割\nミスマッチ', '組織\nミスマッチ', '転職\n必要度'],
+      datasets: [{
+        data: [scores.cond, scores.role, scores.org, scores.career],
+        backgroundColor: 'rgba(99,102,241,0.12)',
+        borderColor: 'rgba(99,102,241,0.85)',
+        borderWidth: 2.5,
+        pointBackgroundColor: '#6366f1',
+        pointRadius: 5,
+        pointHoverRadius: 7,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        r: {
+          min: 0, max: 100,
+          ticks: { stepSize: 25, font: { size: 10 }, color: '#94a3b8' },
+          pointLabels: { font: { size: 11, weight: '600' }, color: '#334155' },
+          grid: { color: 'rgba(0,0,0,0.07)' },
+          angleLines: { color: 'rgba(0,0,0,0.07)' },
+        }
+      }
+    }
+  });
+}
+
+function toggleShare() {
+  document.getElementById('toggle-sw').classList.toggle('on');
+  document.getElementById('company-box').classList.toggle('show');
+}
+
+function restart() {
+  answers = {}; scores = {}; ptype = null; curSec = 0;
+  showScreen('screen-welcome');
+}
+</script>
+</body>
+</html>
